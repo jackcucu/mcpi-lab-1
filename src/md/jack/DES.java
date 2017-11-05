@@ -149,9 +149,9 @@ class DES
         System.out.println("Enter key = 8 characters:");
         final int[] keyBits = getBits();
 
-        System.out.println("\n+++ ENCRYPTION +++");
+        System.out.println("\nENCRYPTION");
         int outputBits[] = permute(inputBits, keyBits, false);
-        System.out.println("\n+++ DECRYPTION +++");
+        System.out.println("\nDECRYPTION");
         permute(outputBits, keyBits, true);
     }
 
@@ -204,6 +204,8 @@ class DES
         int R[] = new int[32];
         int i;
 
+        System.out.print("Key before PC1 : ");
+        displayBits(keyBits, 8);
         // Permuted Choice 1 is done here
         for (i = 0; i < 28; i++)
         {
@@ -213,15 +215,28 @@ class DES
         {
             D[i - 28] = keyBits[PC1[i] - 1];
         }
-
+        System.out.print("\nKey after 56 bit permutation : ");
+        displayBits(C, 7);
+        System.out.print(" ");
+        displayBits(D, 7);
+        System.out.print("\nC0 : ");
+        displayBits(C, 7);
+        System.out.println();
+        System.out.print("D0 : ");
+        displayBits(D, 7);
+        System.out.println();
         // After PC1 the first L and R are ready to be used and hence looping
         // can start once L and R are initialized
         System.arraycopy(newBits, 0, L, 0, 32);
         System.arraycopy(newBits, 32, R, 0, 32);
+        System.out.print("Message before IP : ");
+        displayBits(inputBits, 8);
+        System.out.print("\nMessage after IP : ");
+        displayBits(newBits, 8);
         System.out.print("\nL0 = ");
-        displayBits(L);
+        displayBits(L, 8);
         System.out.print("R0 = ");
-        displayBits(R);
+        displayBits(R, 8);
         for (int n = 0; n < 16; n++)
         {
             System.out.println("\n-------------");
@@ -231,17 +246,14 @@ class DES
             // subkey otherwise the stored subkeys are used in reverse order
             // for decryption.
             int newR[] = new int[0];
+
             if (isDecrypt)
             {
                 newR = fiestel(R, subkey[15 - n]);
-                System.out.print("Round key = ");
-                displayBits(subkey[15 - n]);
             }
             else
             {
                 newR = fiestel(R, KS(n, keyBits));
-                System.out.print("Round key = ");
-                displayBits(subkey[n]);
             }
             // xor-ing the L and new R gives the new L value. new L is stored
             // in R and new R is stored in L, thus exchanging R and L for the
@@ -249,10 +261,11 @@ class DES
             int newL[] = xor(L, newR);
             L = R;
             R = newL;
-            System.out.print("L = ");
-            displayBits(L);
-            System.out.print("R = ");
-            displayBits(R);
+            System.out.print("\nL" + (n + 1) + " = ");
+            displayBits(L, 4);
+            System.out.print("\nR" + (n + 1) + " = ");
+            displayBits(R, 4);
+            System.out.println();
         }
 
         // R and L has the two halves of the output before applying the final
@@ -261,6 +274,8 @@ class DES
         System.arraycopy(R, 0, output, 0, 32);
         System.arraycopy(L, 0, output, 32, 32);
         int finalOutput[] = new int[64];
+        System.out.print("R16 L16 : ");
+        displayBits(output, 8);
         // Applying FP table to the preoutput, we get the final output:
         // Encryption => final output is ciphertext
         // Decryption => final output is plaintext
@@ -268,7 +283,9 @@ class DES
         {
             finalOutput[i] = output[FP[i] - 1];
         }
-
+        System.out.print("\nR16 L16 AFTER REVERSE IP : ");
+        displayBits(finalOutput, 8);
+        System.out.println();
         // Since the final output is stored as an int array of bits, we convert
         // it into a hex string:
         StringBuilder hex = new StringBuilder();
@@ -308,7 +325,12 @@ class DES
         // leftShift() method is used for rotation (the rotation is basically)
         // a left shift operation, hence the name.
         C1 = leftShift(C, rotationTimes);
+        System.out.print("C : ");
+        displayBits(C1, 7);
+        System.out.print("\nD : ");
         D1 = leftShift(D, rotationTimes);
+        displayBits(D1, 7);
+        System.out.println();
         // CnDn stores the combined C1 and D1 halves
         int CnDn[] = new int[56];
         System.arraycopy(C1, 0, CnDn, 0, 28);
@@ -327,11 +349,20 @@ class DES
 
     private static int[] fiestel(int[] R, int[] roundKey)
     {
+        System.out.print("Round key = ");
+        displayBits(roundKey, 6);
+        System.out.print("\nR : ");
+        displayBits(R,4);
         // Method to implement Fiestel function.
         // First the 32 bits of the R array are expanded using E table.
         int expandedR[] = IntStream.range(0, 48).map(i -> R[E[i] - 1]).toArray();
+        System.out.print("\nExpanded R : ");
+        displayBits(expandedR, 6);
         // We xor the expanded R and the generated round key
         int temp[] = xor(expandedR, roundKey);
+        System.out.print("\nK XOR E(R) : ");
+        displayBits(temp, 6);
+        System.out.println();
         // The S boxes are then applied to this xor result and this is the
         // output of the Fiestel function.
         return sBlock(temp);
@@ -393,6 +424,9 @@ class DES
         }
         // P table is applied to the output and this is the final output of one
         // S-box round:
+        System.out.print("S1(B1)S2(B2).... : ");
+        displayBits(output, 4);
+        System.out.println();
         return IntStream.range(0, 32).map(i -> output[P[i] - 1]).toArray();
     }
 
@@ -410,18 +444,17 @@ class DES
         return answer;
     }
 
-    private static void displayBits(int[] bits)
+    private static void displayBits(int[] bits, int step)
     {
         // Method to display int array bits as a hexadecimal string.
-        for (int i = 0; i < bits.length; i += 8)
+        for (int i = 0; i < bits.length; i++)
         {
-            StringBuilder output = new StringBuilder();
-            for (int j = 0; j < 8; j++)
+            final int bit = bits[i];
+            System.out.print(bit);
+            if((i + 1) % step == 0)
             {
-                output.append(bits[i + j]);
+                System.out.print(" ");
             }
-            System.out.print(Integer.toHexString(Integer.parseInt(output.toString(), 2)));
         }
-        System.out.println();
     }
 }
